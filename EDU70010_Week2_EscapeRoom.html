@@ -27,6 +27,7 @@ html,body{background:var(--bg)}
 body{
   font-family:'Shantell Sans',system-ui,sans-serif;
   color:var(--ink);min-height:100vh;padding:16px;background:var(--bg);
+  display:flex;flex-direction:column;
 }
 .corner{position:fixed;width:200px;height:200px;pointer-events:none;z-index:0;
   background-image:radial-gradient(var(--red) 1.6px, transparent 1.9px);background-size:16px 16px;}
@@ -38,6 +39,7 @@ body{
   border-radius:16px;overflow:hidden;
   box-shadow:0 6px 28px rgba(0,0,0,.12);
   border-bottom:10px solid var(--red);
+  width:100%;flex:1 0 auto;display:flex;flex-direction:column;
 }
 header.top{
   display:flex;align-items:center;justify-content:space-between;gap:12px;
@@ -72,7 +74,8 @@ header.top img{height:40px;width:auto;display:block}
 .door-chip.current{border-color:var(--red);color:var(--red)}
 .door-chip.done{border-color:var(--ink);background:var(--ink);color:#fff}
 .door-chip svg{width:14px;height:14px}
-main{padding:24px 24px 28px}
+main{padding:24px 24px 28px;flex:1 0 auto;display:flex;flex-direction:column}
+#screenGate.active{flex:1;display:flex;flex-direction:column;justify-content:center;max-width:720px;margin:0 auto;width:100%;padding-bottom:6vh}
 .screen{display:none}
 .screen.active{display:block;animation:fadeIn .35s ease}
 @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
