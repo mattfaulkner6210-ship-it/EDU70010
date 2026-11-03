@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="en-AU">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Towers of Hanoi Investigation</title>
+<style>
+  :root {
+    --bg: #f4f7fb;
+    --card: #ffffff;
+    --ink: #1d2433;
+    --muted: #5b6577;
+    --line: #dde3ec;
+    --accent: #2f6fde;
+    --accent-soft: #e6eefc;
+    --good: #1f9d55;
+    --good-soft: #e3f6ea;
+    --warn: #d9480f;
+    --warn-soft: #fff0e6;
+    --peg: #8a6a4a;
+    --base: #6b4f35;
+    --radius: 16px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "Segoe UI", "Trebuchet MS", system-ui, -apple-system, sans-serif;
+    font-size: 17px;
+    line-height: 1.5;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 20px 16px 40px; }
+  header { text-align: center; margin-bottom: 18px; }
+  header h1 { margin: 0; font-size: clamp(28px, 5vw, 40px); letter-spacing: 0.5px; }
+  header p { margin: 4px 0 0; color: var(--muted); font-size: 18px; }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 20px;
+    margin-bottom: 18px;
+    box-shadow: 0 2px 8px rgba(20, 40, 80, 0.05);
+  }
+  .card h2 { margin: 0 0 6px; font-size: 22px; display: flex; align-items: center; gap: 10px; }
+  .step-num {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 34px; height: 34px; border-radius: 50%;
+    background: var(--accent); color: #fff; font-size: 18px; flex: none;
+  }
+  .card > p { margin: 6px 0 10px; }
+
+  .rules { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 14px; padding: 0; list-style: none; }
+  .rules li { background: var(--accent-soft); border-radius: 999px; padding: 6px 14px; font-size: 15px; }
+
+  .controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 14px; }
+  .stepper { display: inline-flex; align-items: center; border: 2px solid var(--line); border-radius: 12px; overflow: hidden; }
+  .stepper button { border: 0; border-radius: 0; background: #f0f3f8; width: 42px; height: 42px; font-size: 22px; padding: 0; }
+  .stepper span { min-width: 92px; text-align: center; font-weight: 700; }
+  button {
+    font: inherit; font-size: 16px; cursor: pointer;
+    border: 2px solid transparent; border-radius: 12px;
+    padding: 8px 16px; background: var(--accent); color: #fff; font-weight: 600;
+  }
+  button.secondary { background: #fff; color: var(--ink); border-color: var(--line); }
+  button:disabled { opacity: 0.45; cursor: not-allowed; }
+  button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 3px solid #f2b705; outline-offset: 2px; }
+
+  .speed { display: inline-flex; align-items: center; gap: 8px; font-size: 15px; color: var(--muted); }
+  .speed input { width: 110px; }
+  .check-label { display: inline-flex; align-items: center; gap: 6px; font-size: 15px; color: var(--muted); }
+
+  .scorebar { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .counter { font-size: 22px; font-weight: 800; }
+  .counter small { font-size: 15px; font-weight: 600; color: var(--muted); }
+  .status { min-height: 28px; font-weight: 600; color: var(--muted); }
+  .status.good { color: var(--good); }
+  .status.warn { color: var(--warn); }
+
+  .board {
+    position: relative;
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px;
+    background: linear-gradient(#eaf2ff, #f8fbff);
+    border-radius: 14px; padding: 46px 8px 0;
+    user-select: none;
+  }
+  .peg {
+    position: relative; height: 280px; background: transparent; border: 0; padding: 0;
+    display: flex; flex-direction: column-reverse; align-items: center;
+    border-radius: 12px; color: inherit; font-weight: normal;
+  }
+  .peg::before {
+    content: ""; position: absolute; bottom: 0; left: 50%; transform: translateX(-50%);
+    width: 12px; height: 92%; background: var(--peg); border-radius: 6px 6px 0 0;
+  }
+  .peg.target-ok { background: rgba(31, 157, 85, 0.10); }
+  .peg.target-bad { background: rgba(217, 72, 15, 0.08); }
+  .peg.shake { animation: shake 0.35s; }
+  @keyframes shake { 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
+  .disc {
+    position: relative; z-index: 1;
+    border-radius: 999px; margin-top: 2px;
+    border: 2px solid rgba(0,0,0,0.18);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 800; color: rgba(0,0,0,0.55);
+    transition: transform 0.15s;
+  }
+  .disc.lifted { transform: translateY(-34px); box-shadow: 0 8px 14px rgba(0,0,0,0.25); outline: 3px solid #f2b705; }
+  .bases { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; padding: 0 8px; }
+  .base { height: 14px; background: var(--base); border-radius: 0 0 8px 8px; }
+  .labels { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; padding: 6px 8px 0; text-align: center; font-weight: 700; color: var(--muted); }
+  .labels .finish { color: var(--good); }
+  .help { font-size: 14px; color: var(--muted); margin-top: 8px; }
+
+  .celebrate { position: absolute; top: 6px; left: 50%; transform: translateX(-50%); font-size: 30px; pointer-events: none; opacity: 0; }
+  .celebrate.show { animation: pop 1.6s ease-out; }
+  @keyframes pop { 0% { opacity: 0; transform: translate(-50%, 20px) scale(0.6); } 20% { opacity: 1; transform: translate(-50%, 0) scale(1.15); } 80% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -10px) scale(1); } }
+
+  table { width: 100%; border-collapse: collapse; font-size: 16px; }
+  th, td { border-bottom: 1px solid var(--line); padding: 8px 6px; text-align: center; }
+  th { background: #f0f3f8; font-size: 14px; text-transform: uppercase; letter-spacing: 0.4px; color: var(--muted); }
+  td input { width: 90px; font: inherit; padding: 4px 6px; border: 2px solid var(--line); border-radius: 8px; text-align: center; }
+  tr.current td { background: #fffbe6; }
+  .tag { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 14px; font-weight: 700; }
+  .tag.yes { background: var(--good-soft); color: var(--good); }
+  .tag.no { background: var(--warn-soft); color: var(--warn); }
+  .empty { color: #b3bccb; }
+  .table-scroll { overflow-x: auto; }
+
+  .prompt { border-left: 4px solid var(--accent); padding: 4px 0 4px 14px; margin: 16px 0; }
+  .prompt p { margin: 0 0 6px; font-weight: 600; }
+  textarea {
+    width: 100%; min-height: 76px; font: inherit; font-size: 16px;
+    padding: 8px 10px; border: 2px solid var(--line); border-radius: 10px; resize: vertical;
+  }
+  .hint-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+  .hint { display: none; background: #fff8e1; border-radius: 10px; padding: 10px 14px; margin-top: 8px; }
+  .hint.show { display: block; }
+
+  .quiz { display: grid; gap: 10px; margin-top: 10px; }
+  .quiz-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+  .quiz-row label { min-width: 230px; font-weight: 600; }
+  .quiz-row input { width: 160px; font: inherit; padding: 6px 8px; border: 2px solid var(--line); border-radius: 8px; }
+  .feedback { font-weight: 700; }
+  .feedback.good { color: var(--good); }
+  .feedback.warn { color: var(--warn); }
+
+  .footer-actions { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
+
+  @media (max-width: 560px) {
+    .peg { height: 220px; }
+    .board { padding-top: 40px; }
+    .disc { font-size: 0; }
+    .quiz-row label { min-width: 100%; }
+  }
+  @media print {
+    body { background: #fff; }
+    .no-print, .game-card { display: none !important; }
+    .card { box-shadow: none; break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Towers of Hanoi</h1>
+    <p>Move the tower. Find the rule.</p>
+  </header>
+
+  <!-- GAME -->
+  <section class="card game-card" aria-label="Game">
+    <h2>Play the game</h2>
+    <p>Move the whole tower from peg A to peg C in as few moves as you can.</p>
+    <ul class="rules">
+      <li>Move one disc at a time</li>
+      <li>Only the top disc of a peg moves</li>
+      <li>Never put a bigger disc on a smaller one</li>
+    </ul>
+
+    <div class="controls">
+      <div class="stepper" role="group" aria-label="Number of discs">
+        <button id="fewer" aria-label="Fewer discs">−</button>
+        <span id="discLabel">3 discs</span>
+        <button id="more" aria-label="More discs">+</button>
+      </div>
+      <button id="restart" class="secondary">Restart</button>
+      <button id="undo" class="secondary">Undo</button>
+      <button id="solve">Watch it solve</button>
+      <label class="speed">Speed <input id="speed" type="range" min="1" max="5" value="2" aria-label="Solving speed"></label>
+      <label class="check-label"><input id="pauseBig" type="checkbox"> Pause when the biggest disc moves</label>
+    </div>
+
+    <div class="scorebar">
+      <div class="counter"><span id="moves">0</span> <small>moves</small></div>
+      <div id="status" class="status" role="status" aria-live="polite">Tap a peg to pick up its top disc.</div>
+    </div>
+
+    <div class="board" id="board">
+      <div class="celebrate" id="celebrate">⭐ 🎉 ⭐</div>
+      <button class="peg" data-peg="0" aria-label="Peg A"></button>
+      <button class="peg" data-peg="1" aria-label="Peg B"></button>
+      <button class="peg" data-peg="2" aria-label="Peg C"></button>
+    </div>
+    <div class="bases"><div class="base"></div><div class="base"></div><div class="base"></div></div>
+    <div class="labels"><div>A (start)</div><div>B</div><div class="finish">C (finish)</div></div>
+    <p class="help">Tap or click a peg to lift its top disc, then tap another peg to drop it. Keyboard: press 1, 2 or 3.</p>
+  </section>
+
+  <!-- STEP 1 -->
+  <section class="card">
+    <h2><span class="step-num">1</span>Play and record</h2>
+    <p>Solve the tower with 1, 2, 3 and 4 discs. Your fewest moves for each size fill in by themselves. Keep trying until you think you have found the shortest way.</p>
+    <p>Before you play 5 discs or more, type a prediction in the table. Then play it yourself, or press <strong>Watch it solve</strong> to see the computer do it in the fewest moves possible.</p>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr><th>Discs</th><th>My prediction</th><th>My fewest moves</th><th>Computer's moves</th><th>Prediction right?</th></tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- STEP 2 -->
+  <section class="card">
+    <h2><span class="step-num">2</span>Look for patterns</h2>
+    <p>Use your table to answer these questions.</p>
+
+    <div class="prompt">
+      <p>a) Look down the moves column. How much bigger is each answer than the one before? Write the differences down.</p>
+      <textarea data-note="diff" placeholder="The differences are..."></textarea>
+    </div>
+    <div class="prompt">
+      <p>b) Pick one answer. How could you use it to get the next answer?</p>
+      <textarea data-note="next" placeholder="To get the next answer I..."></textarea>
+    </div>
+    <div class="prompt">
+      <p>c) Add 1 to every answer in your table. What do you notice about the new numbers?</p>
+      <textarea data-note="plusone" placeholder="When I add 1 I get..."></textarea>
+    </div>
+
+    <div class="hint-row no-print">
+      <button class="secondary" data-hint="1">Hint 1</button>
+      <button class="secondary" data-hint="2">Hint 2</button>
+      <button class="secondary" data-hint="3">Hint 3</button>
+    </div>
+    <div class="hint" id="hint1">Write the differences between answers next to each other. Do the differences grow in a pattern you know?</div>
+    <div class="hint" id="hint2">Take any answer, double it, then add 1. Compare your result with the next answer in the table.</div>
+    <div class="hint" id="hint3">Start at 1 and keep doubling: 2, 4, 8, 16... Compare these numbers with your answers plus 1.</div>
+  </section>
+
+  <!-- STEP 3 -->
+  <section class="card">
+    <h2><span class="step-num">3</span>Write your rule</h2>
+    <div class="prompt">
+      <p>Rule 1: How do you get the number of moves for the next size tower from the one before?</p>
+      <textarea data-note="rule1" placeholder="To find the moves for one more disc..."></textarea>
+    </div>
+    <div class="prompt">
+      <p>Rule 2: How do you work out the moves for ANY number of discs without knowing the size before? (Challenge)</p>
+      <textarea data-note="rule2" placeholder="For any number of discs..."></textarea>
+    </div>
+  </section>
+
+  <!-- STEP 4 -->
+  <section class="card">
+    <h2><span class="step-num">4</span>Test your rule</h2>
+    <p>These towers are too big to play. Use your rule to work out the fewest moves, then check.</p>
+    <div class="quiz" id="quiz"></div>
+  </section>
+
+  <!-- STEP 5 -->
+  <section class="card">
+    <h2><span class="step-num">5</span>Explain why it works</h2>
+    <p>Set the game to 4 discs, slow the speed right down, tick <strong>Pause when the biggest disc moves</strong> and press <strong>Watch it solve</strong>.</p>
+    <div class="prompt">
+      <p>a) Where are the other 3 discs when the biggest disc moves? How many moves did it take to get them there?</p>
+      <textarea data-note="why1" placeholder="When the biggest disc moves, the other discs are..."></textarea>
+    </div>
+    <div class="prompt">
+      <p>b) Use what you saw to explain why your Rule 1 works.</p>
+      <textarea data-note="why2" placeholder="My rule works because..."></textarea>
+    </div>
+    <div class="prompt">
+      <p>c) Legend says temple monks are moving a tower of 64 golden discs, one move every second. Explain why they will be busy for a long, long time.</p>
+      <textarea data-note="monks" placeholder="The monks will be busy because..."></textarea>
+    </div>
+  </section>
+
+  <div class="footer-actions no-print">
+    <button id="printBtn">Print my work</button>
+    <button id="clearBtn" class="secondary">Clear all my work</button>
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  var MAX = 10, MIN = 1;
+  var COLOURS = ["#ff6b6b", "#ffa94d", "#ffd43b", "#94d82d", "#38d9a9", "#3bc9db", "#4dabf7", "#748ffc", "#b197fc", "#f783ac"];
+  var STORE_KEY = "hanoi-investigation-v1";
+  var DELAYS = [700, 350, 140, 45, 8];
+
+  var N = 3, pegs = [[], [], []], moves = 0, history = [], selected = null;
+  var solved = false, usedAuto = false;
+  var solving = false, paused = false, solveQueue = [], solveTimer = null;
+
+  var data = load();
+
+  function load() {
+    var blank = { best: {}, pred: {}, comp: {}, notes: {}, quiz: {}, n: 3 };
+    try {
+      var raw = localStorage.getItem(STORE_KEY);
+      if (!raw) return blank;
+      var d = JSON.parse(raw);
+      for (var k in blank) if (!(k in d)) d[k] = blank[k];
+      return d;
+    } catch (e) { return blank; }
+  }
+  function save() {
+    try { localStorage.setItem(STORE_KEY, JSON.stringify(data)); } catch (e) {}
+  }
+
+  var $ = function (id) { return document.getElementById(id); };
+  var pegEls = Array.prototype.slice.call(document.querySelectorAll(".peg"));
+
+  function minMoves(n) { return Math.pow(2, n) - 1; }
+
+  function setStatus(text, kind) {
+    var s = $("status");
+    s.textContent = text;
+    s.className = "status" + (kind ? " " + kind : "");
+  }
+
+  function newGame(n) {
+    stopSolving();
+    N = n; data.n = n; save();
+    pegs = [[], [], []];
+    for (var i = n; i >= 1; i--) pegs[0].push(i);
+    moves = 0; history = []; selected = null; solved = false; usedAuto = false;
+    setStatus("Tap a peg to pick up its top disc.");
+    render();
+  }
+
+  function render() {
+    $("discLabel").textContent = N + (N === 1 ? " disc" : " discs");
+    $("fewer").disabled = N <= MIN || solving;
+    $("more").disabled = N >= MAX || solving;
+    $("undo").disabled = history.length === 0 || solving || solved;
+    $("moves").textContent = moves;
+    $("solve").textContent = solving ? (paused ? "Resume" : "Pause") : "Watch it solve";
+
+    var boardH = pegEls[0].clientHeight || 280;
+    var discH = Math.max(14, Math.min(30, Math.floor((boardH * 0.85) / Math.max(N, 1)) - 2));
+
+    pegEls.forEach(function (el, p) {
+      el.innerHTML = "";
+      el.classList.remove("target-ok", "target-bad");
+      pegs[p].forEach(function (size, idx) {
+        var d = document.createElement("div");
+        d.className = "disc";
+        var w = N === 1 ? 60 : 28 + ((size - 1) / (N - 1)) * 66;
+        d.style.width = w + "%";
+        d.style.height = discH + "px";
+        d.style.background = COLOURS[size - 1];
+        d.textContent = discH >= 18 ? size : "";
+        if (selected === p && idx === pegs[p].length - 1) d.classList.add("lifted");
+        el.appendChild(d);
+      });
+      if (selected !== null && selected !== p) {
+        var top = pegs[p][pegs[p].length - 1];
+        var moving = pegs[selected][pegs[selected].length - 1];
+        el.classList.add(!top || top > moving ? "target-ok" : "target-bad");
+      }
+    });
+    renderTable();
+  }
+
+  function tapPeg(p) {
+    if (solving) return;
+    if (solved) { setStatus("Solved! Press Restart or change the number of discs to play again.", "good"); return; }
+    if (selected === null) {
+      if (pegs[p].length === 0) { setStatus("That peg is empty. Pick a peg with a disc on it.", "warn"); return; }
+      selected = p;
+      setStatus("Now tap the peg you want to move it to.");
+    } else if (selected === p) {
+      selected = null;
+      setStatus("Disc put back down.");
+    } else {
+      var moving = pegs[selected][pegs[selected].length - 1];
+      var top = pegs[p][pegs[p].length - 1];
+      if (top && top < moving) {
+        shake(p);
+        setStatus("A bigger disc can't go on a smaller one. Try another peg.", "warn");
+        return;
+      }
+      doMove(selected, p);
+      selected = null;
+      checkWin();
+      if (!solved) setStatus("Tap a peg to pick up its next disc.");
+    }
+    render();
+  }
+
+  function doMove(from, to) {
+    pegs[to].push(pegs[from].pop());
+    moves++;
+    history.push([from, to]);
+  }
+
+  function shake(p) {
+    var el = pegEls[p];
+    el.classList.remove("shake"); void el.offsetWidth; el.classList.add("shake");
+  }
+
+  function checkWin() {
+    if (pegs[2].length !== N) return;
+    solved = true;
+    celebrate();
+    if (usedAuto) return;
+    var prevBest = data.best[N];
+    if (!prevBest || moves < prevBest) data.best[N] = moves;
+    save();
+    if (moves === minMoves(N)) {
+      setStatus("Solved in " + moves + " moves. Nobody can beat that! ⭐", "good");
+    } else {
+      setStatus("Solved in " + moves + " moves. There is a shorter way. Can you find it?", "good");
+    }
+  }
+
+  function celebrate() {
+    var c = $("celebrate");
+    c.classList.remove("show"); void c.offsetWidth; c.classList.add("show");
+  }
+
+  function undo() {
+    if (!history.length || solving || solved) return;
+    var m = history.pop();
+    pegs[m[0]].push(pegs[m[1]].pop());
+    moves--; selected = null;
+    setStatus("Last move undone.");
+    render();
+  }
+
+  /* Auto solve */
+  function buildSolution(n, from, to, spare, out) {
+    if (n === 0) return;
+    buildSolution(n - 1, from, spare, to, out);
+    out.push([from, to]);
+    buildSolution(n - 1, spare, to, from, out);
+  }
+
+  function startSolve() {
+    var n = N;
+    newGame(n);
+    usedAuto = true;
+    solveQueue = [];
+    buildSolution(n, 0, 2, 1, solveQueue);
+    solving = true; paused = false;
+    setStatus("Watch closely. Count the moves.");
+    render();
+    tick();
+  }
+
+  function tick() {
+    if (!solving || paused) return;
+    if (!solveQueue.length) { finishSolve(); return; }
+    var m = solveQueue.shift();
+    var size = pegs[m[0]][pegs[m[0]].length - 1];
+    doMove(m[0], m[1]);
+    render();
+    if (size === N && N > 1 && $("pauseBig").checked) {
+      paused = true;
+      setStatus("The biggest disc just moved. Where are the other discs? How many moves so far?", "warn");
+      render();
+      return;
+    }
+    solveTimer = setTimeout(tick, DELAYS[+$("speed").value - 1]);
+  }
+
+  function finishSolve() {
+    solving = false; paused = false; solved = true;
+    data.comp[N] = moves; save();
+    celebrate();
+    setStatus("The computer solved " + N + (N === 1 ? " disc" : " discs") + " in " + moves + " moves.", "good");
+    render();
+  }
+
+  function stopSolving() {
+    clearTimeout(solveTimer);
+    solving = false; paused = false; solveQueue = [];
+  }
+
+  function toggleSolve() {
+    if (!solving) { startSolve(); return; }
+    paused = !paused;
+    if (!paused) { setStatus("Watch closely. Count the moves."); tick(); }
+    else setStatus("Paused at " + moves + " moves.");
+    render();
+  }
+
+  /* Table */
+  function renderTable() {
+    var body = $("tableBody");
+    var active = document.activeElement;
+    var focusN = active && active.dataset && active.dataset.pred;
+    if (focusN) return; // don't rebuild while typing
+    body.innerHTML = "";
+    for (var n = 1; n <= MAX; n++) {
+      var tr = document.createElement("tr");
+      if (n === N) tr.className = "current";
+      var pred = data.pred[n] != null ? data.pred[n] : "";
+      var best = data.best[n];
+      var comp = data.comp[n];
+      var verdict = '<span class="empty">–</span>';
+      if (pred !== "" && comp != null) {
+        verdict = +pred === comp ? '<span class="tag yes">Yes ✓</span>' : '<span class="tag no">Not this time</span>';
+      }
+      tr.innerHTML =
+        "<td><strong>" + n + "</strong></td>" +
+        '<td><input type="number" min="0" inputmode="numeric" data-pred="' + n + '" value="' + pred + '" aria-label="Prediction for ' + n + ' discs"></td>' +
+        "<td>" + (best != null ? best : '<span class="empty">–</span>') + "</td>" +
+        "<td>" + (comp != null ? comp : '<span class="empty">–</span>') + "</td>" +
+        "<td>" + verdict + "</td>";
+      body.appendChild(tr);
+    }
+  }
+
+  $("tableBody").addEventListener("input", function (e) {
+    var n = e.target.dataset.pred;
+    if (!n) return;
+    var v = e.target.value.trim();
+    if (v === "") delete data.pred[n]; else data.pred[n] = +v;
+    save();
+  });
+  $("tableBody").addEventListener("focusout", function () { setTimeout(renderTable, 0); });
+
+  /* Notes */
+  Array.prototype.forEach.call(document.querySelectorAll("textarea[data-note]"), function (t) {
+    t.value = data.notes[t.dataset.note] || "";
+    t.addEventListener("input", function () { data.notes[t.dataset.note] = t.value; save(); });
+  });
+
+  /* Hints */
+  Array.prototype.forEach.call(document.querySelectorAll("[data-hint]"), function (b) {
+    b.addEventListener("click", function () { $("hint" + b.dataset.hint).classList.toggle("show"); });
+  });
+
+  /* Quiz */
+  var QUIZ = [11, 15, 20];
+  var quizEl = $("quiz");
+  QUIZ.forEach(function (n) {
+    var row = document.createElement("div");
+    row.className = "quiz-row";
+    row.innerHTML =
+      '<label for="q' + n + '">Fewest moves for ' + n + " discs:</label>" +
+      '<input id="q' + n + '" type="text" inputmode="numeric" autocomplete="off">' +
+      '<button class="secondary" data-q="' + n + '">Check</button>' +
+      '<span class="feedback" id="f' + n + '"></span>';
+    quizEl.appendChild(row);
+    var input = row.querySelector("input");
+    input.value = data.quiz[n] || "";
+    input.addEventListener("input", function () { data.quiz[n] = input.value; save(); });
+    row.querySelector("button").addEventListener("click", function () { checkQuiz(n); });
+    input.addEventListener("keydown", function (e) { if (e.key === "Enter") checkQuiz(n); });
+  });
+  function checkQuiz(n) {
+    var raw = ($("q" + n).value || "").replace(/[\s,]/g, "");
+    var f = $("f" + n);
+    if (raw === "") { f.textContent = "Type an answer first."; f.className = "feedback warn"; return; }
+    if (+raw === minMoves(n)) { f.textContent = "Spot on! ✓"; f.className = "feedback good"; }
+    else { f.textContent = "Not yet. Test your rule on the table, then try again."; f.className = "feedback warn"; }
+  }
+
+  /* Wiring */
+  pegEls.forEach(function (el) {
+    el.addEventListener("click", function () { tapPeg(+el.dataset.peg); });
+  });
+  $("fewer").addEventListener("click", function () { if (N > MIN) newGame(N - 1); });
+  $("more").addEventListener("click", function () { if (N < MAX) newGame(N + 1); });
+  $("restart").addEventListener("click", function () { newGame(N); });
+  $("undo").addEventListener("click", undo);
+  $("solve").addEventListener("click", toggleSolve);
+  $("printBtn").addEventListener("click", function () { window.print(); });
+  $("clearBtn").addEventListener("click", function () {
+    if (!confirm("Clear all your results, predictions and answers?")) return;
+    data = { best: {}, pred: {}, comp: {}, notes: {}, quiz: {}, n: N };
+    save();
+    Array.prototype.forEach.call(document.querySelectorAll("textarea[data-note]"), function (t) { t.value = ""; });
+    QUIZ.forEach(function (n) { $("q" + n).value = ""; $("f" + n).textContent = ""; });
+    newGame(N);
+  });
+  document.addEventListener("keydown", function (e) {
+    var tag = (e.target.tagName || "").toLowerCase();
+    if (tag === "input" || tag === "textarea") return;
+    if (e.key === "1" || e.key === "2" || e.key === "3") tapPeg(+e.key - 1);
+  });
+  window.addEventListener("resize", render);
+
+  newGame(Math.min(MAX, Math.max(MIN, data.n || 3)));
+})();
+</script>
+</body>
+</html>
